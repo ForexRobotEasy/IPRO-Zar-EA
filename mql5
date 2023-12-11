@@ -1,0 +1,76 @@
+mql5
+// IPRO Zar EA - Forex Trading Robot
+// Developer: Forex Robot Easy Team
+// Website: forexroboteasy.com
+
+// Include necessary libraries and indicators
+#include <Trade\Trade.mqh>
+#include <MovingAverages.mqh>
+
+// Define constants
+#define RECOVERY_FACTOR 1.5
+#define MAX_LOTS 0.1
+#define STOP_LOSS 50
+#define TAKE_PROFIT 100
+#define PULLBACK_THRESHOLD 10
+
+// Initialize global variables
+CTrade trade;
+double previousPrice = 0;
+double pullbackEntryPrice = 0;
+double pullbackExitPrice = 0;
+bool inPullback = false;
+
+// Entry point of the EA
+void OnTick()
+{
+    // Get current market price
+    double currentPrice = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+
+    // Check for pullback
+    if (IsPullback(currentPrice))
+    {
+        if (!inPullback)
+        {
+            // Enter pullback trade
+            trade.Buy(MAX_LOTS, _Symbol, currentPrice, STOP_LOSS, TAKE_PROFIT);
+            pullbackEntryPrice = currentPrice;
+            inPullback = true;
+        }
+        else
+        {
+            // Update pullback exit price
+            pullbackExitPrice = currentPrice;
+        }
+    }
+    else
+    {
+        if (inPullback)
+        {
+            // Exit pullback trade
+            trade.Sell(MAX_LOTS, _Symbol, currentPrice, STOP_LOSS, TAKE_PROFIT);
+            inPullback = false;
+        }
+    }
+
+    // Update previous price
+    previousPrice = currentPrice;
+}
+
+// Function to check if current price is a pullback
+bool IsPullback(double currentPrice)
+{
+    double ma20 = iMA(_Symbol, PERIOD_H1, 20, 0, MODE_SMA, PRICE_CLOSE, 1);
+    double ma50 = iMA(_Symbol, PERIOD_H1, 50, 0, MODE_SMA, PRICE_CLOSE, 1);
+
+    // Calculate pullback percentage
+    double pullbackPercent = (currentPrice - ma20) / ma20 * 100;
+
+    // Check if pullback percentage exceeds threshold
+    if (pullbackPercent >= PULLBACK_THRESHOLD)
+    {
+        return true;
+    }
+
+    return false;
+}
